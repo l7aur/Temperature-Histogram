@@ -4,8 +4,8 @@ USE ieee.std_logic_unsigned.all;
 
 ENTITY i2c IS
   GENERIC(
-    input_clk : INTEGER := 50_000_000;                  --input clock speed from user logic in Hz
-    bus_clk   : INTEGER := 400_000                      --speed the i2c bus (scl) will run at in Hz
+    INPUT_CLK : INTEGER := 50_000_000;                  --input clock speed from user logic in Hz
+    BUS_CLK   : INTEGER := 400_000                      --speed the i2c bus (scl) will run at in Hz
   );
   PORT(
     clk           : IN     STD_LOGIC;                    --system clock
@@ -23,9 +23,9 @@ ENTITY i2c IS
 END i2c;
 
 ARCHITECTURE logic OF i2c IS
-  CONSTANT MY_LIMIT  :  INTEGER := (input_clk / bus_clk) / 4;               --number of clocks in 1/4 cycle of scl
   TYPE machine IS
     (READYY, STARTT, COMMANDD, ACKK1, WRITEE, READD, ACKK2, M_ACKK, STOPP); --needed states
+  CONSTANT MY_LIMIT         : INTEGER := (INPUT_CLK / BUS_CLK) / 4;        --number of clocks in 1/4 cycle of scl
   SIGNAL state              : machine;                                      --state machine
   SIGNAL data_clk           : STD_LOGIC;                                    --data clock for sda
   SIGNAL data_clk_prev      : STD_LOGIC;                                    --data clock during previous system clock
@@ -55,7 +55,7 @@ BEGIN
           count := count + 1;                               --continue clock generation timing
         END IF;
       CASE count IS
-        WHEN 0 TO MY_LIMIT-1 =>                             --first 1/4 cycle of clocking
+        WHEN 0 TO MY_LIMIT - 1 =>                             --first 1/4 cycle of clocking
           scl_clk <= '0';
           data_clk <= '0';
         WHEN MY_LIMIT TO MY_LIMIT * 2 - 1 =>                --second 1/4 cycle of clocking
@@ -87,7 +87,7 @@ BEGIN
         ack_error <= '0';                               --clear acknowledge error flag
         bit_cnt <= 7;                                   --reSTARTTs data bit counter
         read_data <= "00000000";                        --clear data read port
-    ELSIF(clk'EVENT AND clk = '1') THEN
+    ELSIF(rising_edge(clk)) THEN
       IF(data_clk = '1' AND data_clk_prev = '0') THEN   --data clock rising edge
         CASE state IS
           WHEN READYY =>                                --idle state

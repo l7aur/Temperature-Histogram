@@ -3,9 +3,9 @@ USE ieee.std_logic_1164.all;
 
 ENTITY hygro IS
   GENERIC(
-    sys_clk_freq            : INTEGER := 50_000_000;                                --input clock speed from user logic in Hz
-    humidity_resolution     : INTEGER RANGE 0 TO 14 := 14;                          --RH resolution in bits (must be 14, 11, or 8)
-    temperature_resolution  : INTEGER RANGE 0 TO 14 := 14                           --temperature resolution in bits (must be 14 or 11)
+    SYS_CLK_FREQ            : INTEGER := 50_000_000;                                --input clock speed from user logic in Hz
+    HUMIDITY_RESOLUTION     : INTEGER RANGE 0 TO 14 := 14;                          --RH resolution in bits (must be 14, 11, or 8)
+    TEMPERATURE_RESOLUTION  : INTEGER RANGE 0 TO 14 := 14                           --temperature resolution in bits (must be 14 or 11)
   );
   PORT(
     clk               : IN    STD_LOGIC;                                            --system clock
@@ -13,8 +13,8 @@ ENTITY hygro IS
     scl               : INOUT STD_LOGIC;                                            --I2C serial clock
     sda               : INOUT STD_LOGIC;                                            --I2C serial data
     pmod_ack_err      : OUT   STD_LOGIC;                                            --I2C slave acknowledge error flag
-    relative_humidity : OUT   STD_LOGIC_VECTOR(humidity_resolution - 1 DOWNTO 0);   --relative humidity data obtained
-    temperature       : OUT   STD_LOGIC_VECTOR(temperature_resolution - 1 DOWNTO 0) --temperature data obtained
+    relative_humidity : OUT   STD_LOGIC_VECTOR(HUMIDITY_RESOLUTION - 1 DOWNTO 0);   --relative humidity data obtained
+    temperature       : OUT   STD_LOGIC_VECTOR(TEMPERATURE_RESOLUTION - 1 DOWNTO 0) --temperature data obtained
     );
 END hygro;
 
@@ -38,8 +38,8 @@ ARCHITECTURE behavior OF hygro IS
 
   COMPONENT i2c IS
   GENERIC(
-    input_clk : INTEGER;                                  --input clock speed from user logic in Hz
-    bus_clk   : INTEGER                                   --speed the i2c bus (scl) will run at in Hz
+    INPUT_CLK : INTEGER;                                  --input clock speed from user logic in Hz
+    BUS_CLK   : INTEGER                                   --speed the i2c bus (scl) will run at in Hz
   );
   PORT(
     clk           : IN     STD_LOGIC;                     --system clock
@@ -60,62 +60,62 @@ BEGIN
 
   --instantiate the i2c master
   i2c_state_machine: i2c
-    GENERIC MAP(input_clk => sys_clk_freq, bus_clk => 4)
+    GENERIC MAP(INPUT_CLK => SYS_CLK_FREQ, BUS_CLK => 40)
     PORT MAP(clk => clk, reset_i2c => reset_pmod, ena => i2c_enable, addr => i2c_addr,
              rw => i2c_rw, write_data => i2c_write_data, busy => i2c_busy,
              read_data => i2c_read_data, ack_error => pmod_ack_err, sda => sda,
              scl => scl);
                
   --determine the bits to set the relative humidity resolution in the sensor's configuration register
-  WITH humidity_resolution SELECT
+  WITH HUMIDITY_RESOLUTION SELECT
     rh_res_bits <= "10" WHEN 8,
                    "01" WHEN 11,
                    "00" WHEN OTHERS;             
 
   --determine the number of clock cycles required for a humidity measurement at the given resolution
-  WITH humidity_resolution SELECT
-    rh_time <= sys_clk_freq/400 WHEN 8,      --2.50ms
-               sys_clk_freq/259 WHEN 11,     --3.85ms
-               sys_clk_freq/153 WHEN OTHERS; --6.50ms
+  WITH HUMIDITY_RESOLUTION SELECT
+    rh_time <= sys_clk_freq / 400 WHEN 8,      --2.50ms
+               sys_clk_freq / 259 WHEN 11,     --3.85ms
+               sys_clk_freq / 153 WHEN OTHERS; --6.50ms
            
   --determine the bits to set the temperature resolution in the sensor's configuration register
-  WITH temperature_resolution SELECT
+  WITH TEMPERATURE_RESOLUTION SELECT
     temp_res_bit <= '1' WHEN 11,
                     '0' WHEN OTHERS;
               
   --determine the number of clock cycles required for a temperature measurement at the given resolution
-  WITH temperature_resolution SELECT
-    temp_time <= sys_clk_freq/273 WHEN 11,     --3.65ms
-                 sys_clk_freq/157 WHEN OTHERS; --6.35ms            
+  WITH TEMPERATURE_RESOLUTION SELECT
+    temp_time <= sys_clk_freq / 273 WHEN 11,     --3.65ms
+                 sys_clk_freq / 157 WHEN OTHERS; --6.35ms            
              
   PROCESS(clk, reset_pmod)
-    VARIABLE busy_cnt   : INTEGER RANGE 0 TO 4 := 0;                  --counts the I2C busy signal transistions
-    VARIABLE pwr_up_cnt : INTEGER RANGE 0 TO sys_clk_freq / 10 := 0;    --counts 100ms to wait before communicating
-    VARIABLE PAUSEE_cnt  : INTEGER;                                   --counter to wait for measurements to complete
+    VARIABLE busy_cnt    : INTEGER RANGE 0 TO 4 := 0;                  --counts the I2C busy signal transistions
+    VARIABLE pwr_up_cnt  : INTEGER RANGE 0 TO sys_clk_freq / 10 := 0;  --counts 100ms to wait before communicating
+    VARIABLE pause_cnt   : INTEGER;                                     --counter to wait for measurements to complete
   BEGIN
   
     IF(reset_pmod = '0') THEN                    --reset activated
       pwr_up_cnt := 0;                          --clear power up counter
       i2c_enable <= '0';                        --clear I2C enable
       busy_cnt := 0;                            --clear busy counter
-      PAUSEE_cnt := 0;                          --clear PAUSEE counter
+      pause_cnt := 0;                          --clear PAUSEE counter
       relative_humidity <= (OTHERS => '0');     --clear the relative humidity result output
       temperature <= (OTHERS => '0');           --clear the temperature result output
       state <= STARTT;                          --return to STARTT state
 
-    ELSIF(clk'EVENT AND clk = '1') THEN         --rising edge of system clock
+    ELSIF(rising_edge(clk)) THEN                --rising edge of system clock
       CASE state IS                             --state machine
       
         --give hygrometer 100ms to power up before communicating
         WHEN STARTT =>
-          IF(pwr_up_cnt < sys_clk_freq/10) THEN     --100ms not yet reached
+          IF(pwr_up_cnt < sys_clk_freq / 10) THEN   --100ms not yet reached
             pwr_up_cnt := pwr_up_cnt + 1;           --increment power up counter
           ELSE                                      --100ms reached
             pwr_up_cnt := 0;                        --clear power up counter
             state <= CONFIGUREE;                    --advance to CONFIGUREE the hygrometer
           END IF;
         
-        --CONFIGUREE the device (set acquisition mode to measure both temp & rh, and set resolutions)
+        --configure the device (set acquisition mode to measure both temp & rh, and set resolutions)
         WHEN CONFIGUREE =>
           busy_prev <= i2c_busy;                                        --capture the value of the previous i2c busy signal
           IF(busy_prev = '0' AND i2c_busy = '1') THEN                   --i2c busy just went high
@@ -163,10 +163,10 @@ BEGIN
       
         --wait for humidity and temperature measurements to complete
         WHEN PAUSEE =>
-          IF(PAUSEE_cnt < rh_time + temp_time) THEN     --measurement times not met
-            PAUSEE_cnt := PAUSEE_cnt + 1;               --increment PAUSEE counter
+          IF(pause_cnt < rh_time + temp_time) THEN     --measurement times not met
+            pause_cnt := pause_cnt + 1;               --increment PAUSEE counter
           ELSE                                          --measurement times met
-            PAUSEE_cnt := 0;                            --reset PAUSEE counter
+            pause_cnt := 0;                            --reset PAUSEE counter
             state <= READD;                             --advance to reading data results
           END IF;
        
@@ -205,8 +205,8 @@ BEGIN
   
         --output the relative humidity and temperature data
         WHEN OUTPUTT =>
-          relative_humidity <= humidity_data(15 DOWNTO 16-humidity_resolution);     --write relative humidity data to output
-          temperature <= temperature_data(15 DOWNTO 16-temperature_resolution);     --write temperature data to output
+          relative_humidity <= humidity_data(15 DOWNTO 16 - HUMIDITY_RESOLUTION);     --write relative humidity data to output
+          temperature <= temperature_data(15 DOWNTO 16 - TEMPERATURE_RESOLUTION);     --write temperature data to output
           state <= INITIATEE;                                                       --initiate next measurement
 
         --default to STARTT state
