@@ -11,9 +11,8 @@ entity temperature_register_controller is
     Port(
         clockk : in std_logic;
         rs   : in std_logic;
-        raw_data: in std_logic_vector(RES - 1 downto 2);
+        raw_data: in std_logic_vector(RES - 1 downto 0);
         select_bin: in std_logic_vector(2 downto 0);
-        data_out : out std_logic_vector(15 downto 0);
         as: out std_logic_vector(3 downto 0);
         cs: out std_logic_vector(6 downto 0)
 --        test_clock: out std_logic
@@ -76,9 +75,7 @@ begin
         clk <= aux(23);
     end process;
     
---    test <= clk;
-    
-    wrapper <= raw_data & "0000";
+    wrapper <= raw_data & "00";
     generate_registers: for i in 0 to NO_BINS - 1 generate
         registerI: temperature_register
                     port map(
@@ -128,7 +125,6 @@ begin
         m(5) when "101",
         m(6) when "110",
         m(7) when others;
-    data_out <= data_out_wrapper;
     
     display: ssd_display
         port map(
