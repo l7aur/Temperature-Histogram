@@ -20,17 +20,6 @@ end UART_controller;
 
 
 architecture Behavioral of UART_controller is
-
-    component button_debounce
-        port(
-            clk        : in  std_logic;
-            reset      : in  std_logic;
-            button_in  : in  std_logic;
-            button_out : out std_logic
-            );
-    end component;
-
-
     component UART
         port(
             clk            : in  std_logic;
@@ -45,23 +34,13 @@ architecture Behavioral of UART_controller is
             );
     end component;
 
-    signal button_pressed : std_logic;
-
 begin
-
-    tx_button_controller: button_debounce
-    port map(
-            clk            => clk,
-            reset          => reset,
-            button_in      => tx_enable,
-            button_out     => button_pressed
-            );
 
     UART_transceiver: UART
     port map(
             clk            => clk,
             reset          => reset,
-            tx_start       => button_pressed,
+            tx_start       => tx_enable,
             data_in        => data_in,
             data_out       => data_out,
             rx             => rx,

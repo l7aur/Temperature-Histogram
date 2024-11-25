@@ -4,8 +4,6 @@
 #include <vector>
 #include <iostream>
 #include <stdexcept>
-#include <string>
-#include "raylib.h"
 #include "Parameters.hpp"
 
 class Plot {
@@ -16,7 +14,7 @@ public:
     void draw();
     ~Plot();
 private:
-    void drawBins();
+    void drawBinLabels();
     void drawColumns();
     int computeHeightOfColumn(const unsigned int binIndex);
     void drawAxes();

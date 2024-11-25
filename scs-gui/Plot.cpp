@@ -29,7 +29,7 @@ void Plot::incrementValue(const unsigned int binNumber, const float increment)
 void Plot::draw()
 {
     drawAxes();
-    drawBins();
+    drawBinLabels();
     drawColumns();
 }
 
@@ -39,7 +39,7 @@ Plot::~Plot()
     this->data.~vector();
 }
 
-void Plot::drawBins()
+void Plot::drawBinLabels()
 {
     const int stepSize = 75;
     const int padding = 10;
@@ -76,7 +76,6 @@ void Plot::drawAxes()
 {
     drawOX();
     drawOY();
-    // DrawRectangle(30.0f, 30.0f, static_cast<float>(WINDOW_WIDTH) - 60.0f, static_cast<float>(WINDOW_HEIGHT) - 60.0f, RED); //hihglight plot space
 }
 
 void Plot::drawOY()

@@ -17,7 +17,12 @@ ENTITY top IS
         ------------------------------------------------
         debug_bins_selector         : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
         debug_anodes                : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
-        debug_cathodes              : OUT STD_LOGIC_VECTOR(6 DOWNTO 0)
+        debug_cathodes              : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+        ------------------------------------------------
+        r_antenna                   : IN STD_LOGIC;
+        t_antenna                   : OUT STD_LOGIC;
+        ------------------------------------------------
+        temp                        : OUT STD_LOGIC_VECTOR(13 DOWNTO 0)
     );
 END top;
 
@@ -56,7 +61,35 @@ COMPONENT temperature_register_controller IS
     );
 END COMPONENT;
 
+COMPONENT uart_top IS
+    GENERIC(
+        RESOLUTION       : INTEGER := 14
+    );
+    PORT(
+        clk              : in  std_logic;
+        reset            : in  std_logic;
+        temperature      : in std_logic_vector(RESOLUTION - 1 DOWNTO 0);
+        rx               : in  std_logic;
+        tx               : out std_logic
+    );
+END COMPONENT;
+
+SIGNAL n_reset : STD_LOGIC;
+
 BEGIN
+    temp <= t;
+    n_reset <= not system_reset;
+    
+    send_data_to : uart_top 
+    GENERIC MAP(
+        RESOLUTION              => MY_TEMPERATURE_RESOLUTION)
+    PORT MAP(
+        clk                     => system_clock,
+        reset                   => n_reset,
+        temperature             => t,
+        rx                      => r_antenna,
+        tx                      => t_antenna);
+        
     hygro_connection : hygro
     GENERIC MAP(
         SYS_CLK_FREQ            => MY_SYSTEM_CLK_FREQ, 
